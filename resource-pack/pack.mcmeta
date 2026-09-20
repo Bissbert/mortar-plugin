@@ -1,0 +1,7 @@
+{
+  "pack": {
+    "description": "Mortar: optional Minecraft-style mortar and shell textures",
+    "min_format": [75, 0],
+    "max_format": [75, 0]
+  }
+}

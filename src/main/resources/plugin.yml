@@ -1,0 +1,21 @@
+name: Mortar
+version: '${project.version}'
+main: ch.bissbert.mortar.MortarPlugin
+api-version: '1.21.11'
+description: Target-lock ballistic mortars with configurable special ammunition.
+authors: [Bissbert]
+commands:
+  mortar:
+    description: Give mortars and ammunition, configure reload time, or inspect the plugin.
+    usage: /mortar [give <player> [amount] | ammo <player> <type> [amount] | cooldown <seconds> | reload | status]
+    permission: mortar.admin
+permissions:
+  mortar.use:
+    description: Aim and fire a mortar.
+    default: true
+  mortar.admin:
+    description: Give mortars/ammunition and change settings.
+    default: op
+  mortar.infiniteammo:
+    description: Fire without consuming ammunition.
+    default: op

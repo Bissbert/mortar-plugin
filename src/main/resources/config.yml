@@ -1,0 +1,44 @@
+# Velocity units are blocks/tick; gravity is blocks/tick squared. 20 ticks = 1 second.
+# Targeted velocity is solved from the locked target, gravity and apex clearance.
+gravity: 0.01
+cooldown-ticks: 50
+arc-clearance: 64.0
+# Limits selection only. Shells have NO flight distance/lifetime limit.
+target-distance: 512.0
+max-active-projectiles: 100
+max-active-effects: 100
+ammo-per-shot: 1
+block-damage: true
+set-fire: false
+munitions:
+  he:
+    power: 8.0
+  penetrating:
+    depth: 8.0
+    power: 8.0
+  depth_charge:
+    # Distances measured from impact along the incoming trajectory.
+    depths: [4.0, 6.0, 8.0, 10.0]
+    powers: [9.0, 8.0, 7.0, 6.0]
+    interval-ticks: 4
+  airburst:
+    height: 8.0
+    power: 7.0
+  cluster:
+    height: 16.0
+    count: 8
+    radius: 5.0
+    power: 1.8
+    interval-ticks: 2
+    ground-search-distance: 32.0
+  incendiary_grenade:
+    power: 3.0
+  smoke:
+    radius: 6.0
+    duration-ticks: 400
+  illumination:
+    height: 12.0
+    duration-ticks: 600
+    light-level: 15
+    light-height: 6
+    light-spacing: 8

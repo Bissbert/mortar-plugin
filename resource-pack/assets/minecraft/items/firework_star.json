@@ -1,0 +1,11 @@
+{
+  "model": {
+    "type": "minecraft:select", "property": "minecraft:custom_model_data", "index": 0,
+    "cases": [
+      {"when": "mortar:grenade_he", "model": {"type": "minecraft:model", "model": "mortar:item/grenade_he"}},
+      {"when": "mortar:grenade_penetrating", "model": {"type": "minecraft:model", "model": "mortar:item/grenade_penetrating"}},
+      {"when": "mortar:grenade_airburst", "model": {"type": "minecraft:model", "model": "mortar:item/grenade_airburst"}}
+    ],
+    "fallback": {"type": "minecraft:model", "model": "minecraft:item/firework_star"}
+  }
+}
