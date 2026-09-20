@@ -1,6 +1,6 @@
 # Mortar
 
-A standalone Paper 1.21.11 plugin for target-lock ballistic mortars. Java 21 is required. It has no TNTGun dependency, no external runtime dependencies, and does not modify web hosting or install a server resource pack.
+A standalone Paper 1.21.11 plugin for target-lock ballistic mortars. Java 21 is required. It has no external runtime dependencies and does not modify web hosting or install a server resource pack.
 
 ## Playing
 
@@ -49,11 +49,11 @@ Penetration follows the impact direction, not necessarily vertical depth. It pla
 | `mortar.admin` | operators | All `/mortar` commands |
 | `mortar.infiniteammo` | operators | Fire without consuming shells/TNT |
 
-## Installation and coexistence
+## Installation
 
 Build/download `Mortar-1.0.0.jar`, stop the Minecraft server cleanly, put the JAR into its `plugins` directory, and start it. The default configuration is created under `plugins/Mortar/`. Issue new items with `/mortar give` and `/mortar ammo`.
 
-Mortar uses its own command, permissions and persistent item namespace. TNTGun items deliberately remain TNTGun items; they are not automatically converted or taken over. Both plugins can coexist without either responding to the other's items. Remove old mortar items if replacing the previous implementation. This repository does not remove TNTGun or restart any running service.
+Mortar uses its own command, permissions and persistent item namespace. Existing worlds and other plugins are not modified by installation.
 
 ## Chunk loading and cleanup
 
@@ -65,7 +65,7 @@ Flares place lights only in air, preserve the prior air block data, share overla
 
 ## Optional resource pack
 
-`resource-pack/` supplies a mortar sprite and three shell sprite families, reused from the earlier custom TNTGun artwork and namespaced as `mortar`. It contains only mortar assets and vanilla item selectors; no Dungeons & Taverns files or unrelated server data are bundled. All eight shell types retain distinct names, with related shell types sharing their visual family.
+`resource-pack/` supplies a mortar sprite and three shell sprite families namespaced as `mortar`. It contains only mortar assets and vanilla item selectors. All eight shell types retain distinct names, with related shell types sharing their visual family.
 
 The plugin uses string `custom_model_data` values. Without the pack, the mortar appears as a named blaze rod and shells as named firework stars, and all functionality still works. It does not force downloads or configure any hosting service.
 
@@ -79,7 +79,7 @@ zip -r ../target/Mortar-resource-pack-1.0.0.zip pack.mcmeta assets
 
 Upload the ZIP to your chosen host and configure Paper's standard `resource-pack` / `resource-pack-sha1` properties if desired; use `require-resource-pack=false` to keep it optional. SHA-1 can be calculated with `sha1sum target/Mortar-resource-pack-1.0.0.zip`. Do not overwrite an existing server pack URL without preserving its other assets.
 
-When merging into another pack (including DnT/TNTGun), copy `assets/mortar/` and **merge the `mortar:*` selector cases** into the existing `assets/minecraft/items/blaze_rod.json` and `firework_star.json`. Preserve the existing cases and fallback; replacing the whole selector file would hide another plugin's models. If the existing item uses a different selector shape, nest the Mortar selector around it and use the old model as its fallback. Pack format is 75.0 for Minecraft 1.21.11.
+When merging into another pack, copy `assets/mortar/` and **merge the `mortar:*` selector cases** into the existing `assets/minecraft/items/blaze_rod.json` and `firework_star.json`. Preserve the existing cases and fallback; replacing the whole selector file would hide another plugin's models. If the existing item uses a different selector shape, nest the Mortar selector around it and use the old model as its fallback. Pack format is 75.0 for Minecraft 1.21.11.
 
 ## Build and tests
 
