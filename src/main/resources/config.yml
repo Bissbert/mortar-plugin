@@ -36,6 +36,11 @@ munitions:
   smoke:
     radius: 6.0
     duration-ticks: 400
+    # Layered particle volume; higher density is more opaque but uses more bandwidth.
+    density: 120
+    smoke-height: 6.0
+    # Horizontal movement in blocks/tick. Particles leave a gentle wind trail.
+    smoke-drift: 0.025
   illumination:
     height: 12.0
     duration-ticks: 600

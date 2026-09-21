@@ -119,7 +119,10 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
                     (int) number(p + "duration-ticks", type == Munition.SMOKE ? 400 : 600, 1, 6000),
                     number(p + "ground-search-distance", 32, 1, 128),
                     (int) number(p + "light-level", 15, 1, 15),
-                    (int) number(p + "light-height", 6, 1, 12), (int) number(p + "light-spacing", 8, 1, 16)));
+                    (int) number(p + "light-height", 6, 1, 12), (int) number(p + "light-spacing", 8, 1, 16),
+                    (int) number(p + "density", type == Munition.SMOKE ? 120 : 8, 8, 400),
+                    number(p + "smoke-height", type == Munition.SMOKE ? 6 : 0, 0, 16),
+                    number(p + "smoke-drift", type == Munition.SMOKE ? .025 : 0, 0, .2)));
         }
         return new Settings(number("gravity", .01, .0001, .5), (int) number("cooldown-ticks", 50, 1, 1200),
                 number("arc-clearance", 64, 8, 256), number("target-distance", 512, 16, 2048),
@@ -436,12 +439,7 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
             if (age == 0) {
                 int radius = payload.type == Munition.ILLUMINATION ? payload.lightSpacing + 2 : (int) Math.ceil(payload.radius + 1);
                 if (!tickets.replace(held, chunksBetween(origin, origin, radius))) return false;
-                if (payload.type == Munition.SMOKE) {
-                    AreaEffectCloud cloud = origin.getWorld().spawn(origin, AreaEffectCloud.class, e -> {
-                        tag(e); e.setRadius((float) payload.radius); e.setDuration(payload.duration); e.setWaitTime(0);
-                        e.setParticle(Particle.CAMPFIRE_COSY_SMOKE);
-                    }); entities.add(cloud);
-                } else {
+                if (payload.type != Munition.SMOKE) {
                     BlockDisplay marker = visual(origin, Material.SEA_LANTERN, .5f);
                     marker.setGlowing(true); marker.setBrightness(new Display.Brightness(15, 15)); entities.add(marker);
                     RayTraceResult ground = origin.getWorld().rayTraceBlocks(origin, new Vector(0, -1, 0), 32,
@@ -463,15 +461,65 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
                     }
                 }
             }
+            // Smoke is a persistent volume rather than a one-tick impact marker. Re-emit
+            // the layered particles every tick so the cloud stays full and readable as it drifts.
+            if (payload.type == Munition.SMOKE) spawnSmoke(origin.getWorld());
             if (payload.type == Munition.ILLUMINATION && age % 5 == 0)
                 origin.getWorld().spawnParticle(Particle.END_ROD, origin, 3, .2, .3, .2, .01);
             return age < payload.duration;
+        }
+
+        private void spawnSmoke(World world) {
+            // A single AreaEffectCloud renders as a mostly flat disk. Layered particle volumes
+            // make the cloud occupy real 3-D space, while the moving center leaves a slow wind trail.
+            double driftTicks = age;
+            double driftX = payload.smokeDrift * driftTicks;
+            double driftZ = payload.smokeDrift * .35 * driftTicks;
+            double swirlX = Math.sin(age * .075) * .35;
+            double swirlZ = Math.cos(age * .055) * .35;
+            Location base = origin.clone().add(driftX + swirlX, 0, driftZ + swirlZ);
+            int layers = Math.max(3, (int) Math.ceil(payload.smokeHeight / 1.25));
+            int perLayer = Math.max(4, (int) Math.ceil(payload.smokeDensity / (double) layers));
+            for (int layer = 0; layer < layers; layer++) {
+                double fraction = (layer + .5) / layers;
+                Location center = base.clone().add(0, payload.smokeHeight * fraction, 0);
+                double layerRadius = payload.radius * (.88 + .12 * fraction);
+                double layerHeight = Math.max(.65, payload.smokeHeight / layers * .75);
+                world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, center, perLayer,
+                        layerRadius * .72, layerHeight, layerRadius * .72, .008);
+                // Signal smoke is larger and slower, filling the interior instead of only outlining it.
+                world.spawnParticle(Particle.CAMPFIRE_SIGNAL_SMOKE, center, Math.max(2, perLayer / 4),
+                        layerRadius * .55, layerHeight * .8, layerRadius * .55, .004);
+            }
+            world.spawnParticle(Particle.LARGE_SMOKE, base.clone().add(0, payload.smokeHeight * .45, 0),
+                    Math.max(6, perLayer / 2), payload.radius * .55, payload.smokeHeight * .45,
+                    payload.radius * .55, .002);
         }
     }
 
     private void explode(Player shooter, Location at, float power, Settings options, boolean incendiary) {
         if (!inBlockBounds(at) || !shooter.isOnline() || shooter.isDead() || !shooter.getWorld().equals(at.getWorld())) return;
-        at.getWorld().createExplosion(shooter, at, power, options.fire || incendiary, options.blockDamage, false);
+        boolean exploded = at.getWorld().createExplosion(shooter, at, power, options.fire || incendiary, options.blockDamage, false);
+        if (incendiary && exploded) leaveIncendiaryFire(at, power);
+    }
+
+    private void leaveIncendiaryFire(Location origin, float power) {
+        World world = origin.getWorld();
+        int radius = Math.max(1, Math.min(5, (int) Math.ceil(power * .75)));
+        int centerX = origin.getBlockX(), centerY = origin.getBlockY(), centerZ = origin.getBlockZ();
+        int minY = Math.max(world.getMinHeight(), centerY - 8);
+        int maxY = Math.min(world.getMaxHeight() - 2, centerY + 3);
+        for (int dx = -radius; dx <= radius; dx++) for (int dz = -radius; dz <= radius; dz++) {
+            if (dx * dx + dz * dz > radius * radius) continue;
+            int x = centerX + dx, z = centerZ + dz;
+            for (int y = maxY; y >= minY; y--) {
+                Block ground = world.getBlockAt(x, y, z);
+                Block flame = world.getBlockAt(x, y + 1, z);
+                if (!ground.getType().isSolid() || !flame.getType().isAir()) continue;
+                flame.setType(Material.FIRE, false);
+                break;
+            }
+        }
     }
 
     private BlockDisplay visual(Location at, Material material, float scale) {
@@ -587,7 +635,8 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
     }
     private record Payload(Munition type, float power, double depth, double height, List<Double> depths, List<Double> powers,
                            int interval, int count, double radius, int duration, double groundSearch,
-                           int lightLevel, int lightHeight, int lightSpacing) {}
+                           int lightLevel, int lightHeight, int lightSpacing, int smokeDensity,
+                           double smokeHeight, double smokeDrift) {}
     private record Settings(double gravity, int cooldown, double clearance, double targetDistance, int maxShots,
                             int maxEffects, int ammoPerShot, boolean blockDamage, boolean fire, EnumMap<Munition, Payload> payloads) {}
 }

@@ -22,7 +22,7 @@ The arc is calculated for the exact per-tick gravity integration, with its apex 
 | `depth_charge` | **THE DEPTH CHARGE**: blasts at depths 4/6/8/10, powers 9/8/7/6, four ticks apart |
 | `airburst` | While descending, detonates when terrain/fluid is within 8 blocks below; power 7 |
 | `cluster` | Deploys at 16 blocks above terrain, producing eight downward impact strikes in a radius of 5, power 1.8 each, two ticks apart |
-| `incendiary_grenade` | Impact explosion, power 3, creates fire |
+| `incendiary_grenade` | Impact explosion, power 3, leaves a persistent vanilla fire patch |
 | `smoke` | 20-second particle smoke cloud, radius 6, no explosion |
 | `illumination` | Deploys around 12 blocks above terrain; glowing flare and five actual LIGHT blocks for 30 seconds |
 
