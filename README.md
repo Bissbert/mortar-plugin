@@ -65,7 +65,7 @@ Flares place lights only in air, preserve the prior air block data, share overla
 
 ## Optional resource pack
 
-`resource-pack/` supplies a mortar sprite and three shell sprite families namespaced as `mortar`. It contains only mortar assets and vanilla item selectors. All eight shell types retain distinct names, with related shell types sharing their visual family.
+`resource-pack/` supplies 32×32 hard-edged pixel-art sprites for the mortar and three shell families, namespaced as `mortar`. It contains only mortar assets and vanilla item selectors. All eight shell types retain distinct names, with related shell types sharing their visual family.
 
 The plugin uses string `custom_model_data` values. Without the pack, the mortar appears as a named blaze rod and shells as named firework stars, and all functionality still works. It does not force downloads or configure any hosting service.
 
