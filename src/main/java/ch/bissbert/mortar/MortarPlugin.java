@@ -120,9 +120,11 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
                     number(p + "ground-search-distance", 32, 1, 128),
                     (int) number(p + "light-level", 15, 1, 15),
                     (int) number(p + "light-height", 6, 1, 12), (int) number(p + "light-spacing", 8, 1, 16),
-                    (int) number(p + "density", type == Munition.SMOKE ? 120 : 8, 8, 400),
+                    (int) number(p + "density", type == Munition.SMOKE ? 240 : 8, 8, 400),
                     number(p + "smoke-height", type == Munition.SMOKE ? 6 : 0, 0, 16),
-                    number(p + "smoke-drift", type == Munition.SMOKE ? .025 : 0, 0, .2)));
+                    number(p + "smoke-drift", type == Munition.SMOKE ? .025 : 0, 0, .2),
+                    (int) number(p + "fire-radius", type == Munition.INCENDIARY ? 6 : 0, 0, 12),
+                    (int) number(p + "terrain-radius", type == Munition.INCENDIARY ? 2 : 0, 0, 8)));
         }
         return new Settings(number("gravity", .01, .0001, .5), (int) number("cooldown-ticks", 50, 1, 1200),
                 number("arc-clearance", 64, 8, 256), number("target-distance", 512, 16, 2048),
@@ -346,7 +348,7 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
                 float power = payload.type == Munition.DEPTH_CHARGE ? payload.powers.getFirst().floatValue() : payload.power;
                 Set<ChunkKey> wanted = new HashSet<>(held); wanted.addAll(blastChunks(at, power));
                 if (inBlockBounds(at) && tickets.replace(held, wanted)) explode(shooter, at, power, options,
-                        payload.type == Munition.INCENDIARY);
+                        payload.type == Munition.INCENDIARY, payload.fireRadius, payload.terrainRadius);
             }
             return false;
         }
@@ -424,9 +426,9 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
                             FluidCollisionMode.ALWAYS, false);
                     if (ground != null) {
                         at.getWorld().spawnParticle(Particle.FLAME, at, 8, .2, 1, .2, .03);
-                        explode(shooter, ground.getHitPosition().toLocation(at.getWorld()), powers.get(stage), options, false);
+                        explode(shooter, ground.getHitPosition().toLocation(at.getWorld()), powers.get(stage), options, false, 0, 0);
                     }
-                } else if (inBlockBounds(at)) explode(shooter, at, powers.get(stage), options, false);
+                } else if (inBlockBounds(at)) explode(shooter, at, powers.get(stage), options, false, 0, 0);
                 return stage + 1 < stages.size();
             }
             return true;
@@ -488,24 +490,50 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
                 world.spawnParticle(Particle.CAMPFIRE_COSY_SMOKE, center, perLayer,
                         layerRadius * .72, layerHeight, layerRadius * .72, .008);
                 // Signal smoke is larger and slower, filling the interior instead of only outlining it.
-                world.spawnParticle(Particle.CAMPFIRE_SIGNAL_SMOKE, center, Math.max(2, perLayer / 4),
+                world.spawnParticle(Particle.CAMPFIRE_SIGNAL_SMOKE, center, Math.max(4, perLayer / 2),
                         layerRadius * .55, layerHeight * .8, layerRadius * .55, .004);
             }
             world.spawnParticle(Particle.LARGE_SMOKE, base.clone().add(0, payload.smokeHeight * .45, 0),
-                    Math.max(6, perLayer / 2), payload.radius * .55, payload.smokeHeight * .45,
+                    Math.max(10, perLayer), payload.radius * .55, payload.smokeHeight * .45,
                     payload.radius * .55, .002);
         }
     }
 
-    private void explode(Player shooter, Location at, float power, Settings options, boolean incendiary) {
+    private void explode(Player shooter, Location at, float power, Settings options, boolean incendiary,
+                         int fireRadius, int terrainRadius) {
         if (!inBlockBounds(at) || !shooter.isOnline() || shooter.isDead() || !shooter.getWorld().equals(at.getWorld())) return;
-        boolean exploded = at.getWorld().createExplosion(shooter, at, power, options.fire || incendiary, options.blockDamage, false);
-        if (incendiary && exploded) leaveIncendiaryFire(at, power);
+        // Keep the full-power explosion for entity damage/knockback, but do not let that
+        // same power destroy terrain. Incendiaries get only a shallow hand-sized crater.
+        boolean exploded = at.getWorld().createExplosion(shooter, at, power, options.fire || incendiary,
+                options.blockDamage && !incendiary, false);
+        if (incendiary && exploded) {
+            if (options.blockDamage) scorchTerrain(at, terrainRadius);
+            leaveIncendiaryFire(at, power, fireRadius);
+        }
     }
 
-    private void leaveIncendiaryFire(Location origin, float power) {
+    private void scorchTerrain(Location origin, int configuredRadius) {
         World world = origin.getWorld();
-        int radius = Math.max(1, Math.min(5, (int) Math.ceil(power * .75)));
+        int radius = Math.max(1, Math.min(8, configuredRadius));
+        int centerX = origin.getBlockX(), centerY = origin.getBlockY(), centerZ = origin.getBlockZ();
+        int minY = Math.max(world.getMinHeight(), centerY - 3);
+        int maxY = Math.min(world.getMaxHeight() - 1, centerY + 1);
+        for (int dx = -radius; dx <= radius; dx++) for (int dz = -radius; dz <= radius; dz++) {
+            if (dx * dx + dz * dz > radius * radius) continue;
+            int x = centerX + dx, z = centerZ + dz;
+            for (int y = maxY; y >= minY; y--) {
+                Block block = world.getBlockAt(x, y, z);
+                if (!block.getType().isSolid()) continue;
+                block.setType(Material.AIR, false);
+                break;
+            }
+        }
+    }
+
+    private void leaveIncendiaryFire(Location origin, float power, int configuredRadius) {
+        World world = origin.getWorld();
+        int radius = configuredRadius > 0 ? configuredRadius : (int) Math.ceil(power * 1.5);
+        radius = Math.max(1, Math.min(12, radius));
         int centerX = origin.getBlockX(), centerY = origin.getBlockY(), centerZ = origin.getBlockZ();
         int minY = Math.max(world.getMinHeight(), centerY - 8);
         int maxY = Math.min(world.getMaxHeight() - 2, centerY + 3);
@@ -636,7 +664,7 @@ public final class MortarPlugin extends JavaPlugin implements Listener, TabExecu
     private record Payload(Munition type, float power, double depth, double height, List<Double> depths, List<Double> powers,
                            int interval, int count, double radius, int duration, double groundSearch,
                            int lightLevel, int lightHeight, int lightSpacing, int smokeDensity,
-                           double smokeHeight, double smokeDrift) {}
+                           double smokeHeight, double smokeDrift, int fireRadius, int terrainRadius) {}
     private record Settings(double gravity, int cooldown, double clearance, double targetDistance, int maxShots,
                             int maxEffects, int ammoPerShot, boolean blockDamage, boolean fire, EnumMap<Munition, Payload> payloads) {}
 }

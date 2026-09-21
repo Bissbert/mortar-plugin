@@ -33,11 +33,15 @@ munitions:
     ground-search-distance: 32.0
   incendiary_grenade:
     power: 3.0
+    # Radius in blocks for the persistent fire patch left after impact.
+    fire-radius: 6
+    # Incendiaries use a shallow crater instead of the full-power terrain blast.
+    terrain-radius: 2
   smoke:
     radius: 6.0
     duration-ticks: 400
     # Layered particle volume; higher density is more opaque but uses more bandwidth.
-    density: 120
+    density: 240
     smoke-height: 6.0
     # Horizontal movement in blocks/tick. Particles leave a gentle wind trail.
     smoke-drift: 0.025
